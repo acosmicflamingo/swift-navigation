@@ -17,13 +17,16 @@ struct MyView: View {
       self.alert = AlertState {
         TextState("Log in")
       } actions: {
-        TextFieldState(action: /AlertAction.usernameChanged) {
-          Text("blob@pointfree.co")
+//        TextFieldState(action: /AlertAction.usernameChanged) {
+//          Text("blob@pointfree.co")
+//        }
+        // TODO: add SecureFieldState functionality
+//        SecureFieldState(action: /AlertAction.passwordChanged) {
+//          Text("••••••••")
+//        }
+        ButtonState {
+          TextState("")
         }
-        SecureFieldState(action: /AlertAction.passwordChanged) {
-          Text("••••••••")
-        }
-        ButtonState("")
       }
 
 
@@ -91,5 +94,12 @@ extension TextField where Label == Text {
     ) {
       Text(state.label)
     }
+  }
+}
+
+@available(iOS 15.0, *)
+struct TextField_Previews: PreviewProvider {
+  static var previews: some View {
+    MyView()
   }
 }

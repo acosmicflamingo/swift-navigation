@@ -182,7 +182,7 @@ public enum ButtonStateRole: Sendable {
 @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
 extension ButtonState: ActionState {
   public func body(withAction perform: @escaping (Action) -> Void) -> some View {
-    Button(self, action: perform)
+    Button(self, action: { _ = $0.map(perform) })
   }
 }
 

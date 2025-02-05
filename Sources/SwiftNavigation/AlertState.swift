@@ -133,13 +133,13 @@ import Foundation
 /// ```
 public struct AlertState<Action>: Identifiable {
   public let id: UUID
-  public var buttons: [ButtonState<Action>]
+  public var buttons: [AnyActionState<Action>]
   public var message: TextState?
   public var title: TextState
 
   init(
     id: UUID,
-    buttons: [ButtonState<Action>],
+    buttons: [AnyActionState<Action>],
     message: TextState?,
     title: TextState
   ) {
@@ -157,7 +157,7 @@ public struct AlertState<Action>: Identifiable {
   ///   - message: The message for the alert.
   public init(
     title: () -> TextState,
-    @ButtonStateBuilder<Action> actions: () -> [ButtonState<Action>] = { [] },
+    @ActionStateBuilder<Action> actions: () -> [AnyActionState<Action>] = { [] },
     message: (() -> TextState)? = nil
   ) {
     self.init(

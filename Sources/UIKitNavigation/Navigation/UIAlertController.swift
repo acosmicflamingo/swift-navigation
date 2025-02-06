@@ -26,8 +26,8 @@
         case let .button(buttonState):
           addAction(UIAlertAction(buttonState, action: handler))
 
-        default:
-          continue
+        case let .textField(buttonState2):
+          addAction(UIAlertAction(buttonState2, action: handler))
         }
       }
     }
@@ -74,9 +74,47 @@
   @available(macOS, unavailable)
   @available(tvOS 13, *)
   @available(watchOS, unavailable)
+  extension UIAlertAction.Style {
+    public init(_ role: ButtonState2Role) {
+      switch role {
+      case .cancel:
+        self = .cancel
+      case .destructive:
+        self = .destructive
+      }
+    }
+  }
+
+  @available(iOS 13, *)
+  @available(macCatalyst 13, *)
+  @available(macOS, unavailable)
+  @available(tvOS 13, *)
+  @available(watchOS, unavailable)
   extension UIAlertAction {
     public convenience init<Action>(
       _ button: ButtonState<Action>,
+      action handler: @escaping (_ action: Action?) -> Void = { (_: Never?) in }
+    ) {
+      self.init(
+        title: String(state: button.label),
+        style: button.role.map(UIAlertAction.Style.init) ?? .default
+      ) { _ in
+        button.withAction(handler)
+      }
+      if #available(iOS 15, macOS 12, tvOS 15, watchOS 8, *) {
+        self.accessibilityLabel = button.label.accessibilityLabel.map { String(state: $0) }
+      }
+    }
+  }
+
+  @available(iOS 13, *)
+  @available(macCatalyst 13, *)
+  @available(macOS, unavailable)
+  @available(tvOS 13, *)
+  @available(watchOS, unavailable)
+  extension UIAlertAction {
+    public convenience init<Action>(
+      _ button: ButtonState2<Action>,
       action handler: @escaping (_ action: Action?) -> Void = { (_: Never?) in }
     ) {
       self.init(

@@ -189,8 +189,14 @@
       alert(item: state) {
         Text($0.title)
       } actions: {
-        ForEach($0.buttons) {
-          Button($0, action: handler)
+        ForEach($0.actions) { action in
+          switch action {
+          case let .button(buttonState):
+            Button(buttonState, action: handler)
+
+          case let .textField(buttonState2):
+            Button(buttonState2, action: handler)
+          }
         }
       } message: {
         $0.message.map(Text.init)

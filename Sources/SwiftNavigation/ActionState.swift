@@ -1,12 +1,24 @@
 import Foundation
 
-public protocol ActionState<Action> {
+public protocol ActionState<Action>: Identifiable {
   associatedtype Action
+
+  var id: ID { get }
 }
 
 public enum AnyActionState<Action> {
   case button(ButtonState<Action>)
   case textField(ButtonState2<Action>)
+
+  public var id: UUID {
+    switch self {
+    case let .button(buttonState):
+      return buttonState.id
+
+    case let .textField(buttonState2):
+      return buttonState2.id
+    }
+  }
 
   public func map<NewAction>(
     _ transform: (Action?) -> NewAction?
@@ -20,6 +32,8 @@ public enum AnyActionState<Action> {
     }
   }
 }
+
+extension AnyActionState: ActionState {}
 
 extension AnyActionState: Equatable where Action: Equatable {}
 extension AnyActionState: Hashable where Action: Hashable {}

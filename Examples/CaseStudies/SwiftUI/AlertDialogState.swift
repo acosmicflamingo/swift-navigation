@@ -64,11 +64,14 @@ private class FeatureModel {
     alert = AlertState {
       TextState("Fact about \(count)")
     } actions: {
-      ButtonState(role: .cancel) {
+      ButtonState(role: .destructive) {
         TextState("OK")
       }
-      ButtonState(action: .getFact) {
+      ButtonState2(action: .getFact) {
         TextState("Get another fact")
+      }
+      ButtonState(role: .cancel) {
+        TextState("LOL")
       }
     } message: {
       TextState(fact.description)

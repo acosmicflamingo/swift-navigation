@@ -156,8 +156,8 @@ public struct AlertState<Action>: Identifiable {
       case let buttonState as ButtonState<Action>:
         .button(buttonState)
 
-      case let buttonState2 as ButtonState2<Action>:
-        .textField(buttonState2)
+      case let textFieldState as TextFieldState<Action>:
+        .textField(textFieldState)
 
       default:
         nil

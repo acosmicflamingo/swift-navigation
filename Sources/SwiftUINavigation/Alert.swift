@@ -194,8 +194,8 @@
           case let .button(buttonState):
             Button(buttonState, action: handler)
 
-          case let .textField(buttonState2):
-            Button(buttonState2, action: handler)
+          case let .textField(textFieldState):
+            Button(textFieldState, action: handler)
           }
         }
       } message: {

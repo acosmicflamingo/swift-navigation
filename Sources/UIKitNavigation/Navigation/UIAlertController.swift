@@ -26,8 +26,8 @@
         case let .button(buttonState):
           addAction(UIAlertAction(buttonState, action: handler))
 
-        case let .textField(buttonState2):
-          addAction(UIAlertAction(buttonState2, action: handler))
+        case let .textField(textFieldState):
+          addAction(UIAlertAction(textFieldState, action: handler))
         }
       }
     }
@@ -75,7 +75,7 @@
   @available(tvOS 13, *)
   @available(watchOS, unavailable)
   extension UIAlertAction.Style {
-    public init(_ role: ButtonState2Role) {
+    public init(_ role: TextFieldStateRole) {
       switch role {
       case .cancel:
         self = .cancel
@@ -114,7 +114,7 @@
   @available(watchOS, unavailable)
   extension UIAlertAction {
     public convenience init<Action>(
-      _ button: ButtonState2<Action>,
+      _ button: TextFieldState<Action>,
       action handler: @escaping (_ action: Action?) -> Void = { (_: Never?) in }
     ) {
       self.init(

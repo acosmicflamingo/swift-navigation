@@ -8,15 +8,15 @@ public protocol ActionState<Action>: Identifiable {
 
 public enum AnyActionState<Action> {
   case button(ButtonState<Action>)
-  case textField(ButtonState2<Action>)
+  case textField(TextFieldState<Action>)
 
   public var id: UUID {
     switch self {
     case let .button(buttonState):
       return buttonState.id
 
-    case let .textField(buttonState2):
-      return buttonState2.id
+    case let .textField(textFieldState):
+      return textFieldState.id
     }
   }
 

@@ -133,7 +133,7 @@ import Foundation
 /// ```
 public struct AlertState<Action>: Identifiable {
   public let id: UUID
-  public var buttons: [ButtonState<Action>]
+  public var buttons: [AnyActionState<Action>]
   public var message: TextState?
   public var title: TextState
 
@@ -144,7 +144,19 @@ public struct AlertState<Action>: Identifiable {
     title: TextState
   ) {
     self.id = id
-    self.buttons = buttons
+    self.buttons = buttons.map(AnyActionState.button)
+    self.message = message
+    self.title = title
+  }
+
+  init(
+    id: UUID,
+    actions: [AnyActionState<Action>],
+    message: TextState?,
+    title: TextState
+  ) {
+    self.id = id
+    self.buttons = actions
     self.message = message
     self.title = title
   }
@@ -171,7 +183,7 @@ public struct AlertState<Action>: Identifiable {
   public func map<NewAction>(_ transform: (Action?) -> NewAction?) -> AlertState<NewAction> {
     AlertState<NewAction>(
       id: self.id,
-      buttons: self.buttons.map { $0.map(transform) },
+      actions: self.buttons.map { $0.map(transform) },
       message: self.message,
       title: self.title
     )

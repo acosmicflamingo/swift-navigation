@@ -6,17 +6,17 @@ import IssueReporting
   import SwiftUI
 #endif
 
-public struct ButtonState<Action>: Identifiable {
+public struct ButtonState2<Action>: Identifiable {
   public let id: UUID
-  public let action: ButtonStateAction<Action>
+  public let action: ButtonState2Action<Action>
   public let label: TextState
-  public let role: ButtonStateRole?
+  public let role: ButtonState2Role?
 
   init(
     id: UUID,
-    action: ButtonStateAction<Action>,
+    action: ButtonState2Action<Action>,
     label: TextState,
-    role: ButtonStateRole?
+    role: ButtonState2Role?
   ) {
     self.id = id
     self.action = action
@@ -32,8 +32,8 @@ public struct ButtonState<Action>: Identifiable {
   ///   - action: The action to send when the user interacts with the button.
   ///   - label: A view that describes the purpose of the button's `action`.
   public init(
-    role: ButtonStateRole? = nil,
-    action: ButtonStateAction<Action> = .send(nil),
+    role: ButtonState2Role? = nil,
+    action: ButtonState2Action<Action> = .send(nil),
     label: () -> TextState
   ) {
     self.init(id: UUID(), action: action, label: label(), role: role)
@@ -47,7 +47,7 @@ public struct ButtonState<Action>: Identifiable {
   ///   - action: The action to send when the user interacts with the button.
   ///   - label: A view that describes the purpose of the button's `action`.
   public init(
-    role: ButtonStateRole? = nil,
+    role: ButtonState2Role? = nil,
     action: Action,
     label: () -> TextState
   ) {
@@ -108,8 +108,8 @@ public struct ButtonState<Action>: Identifiable {
   /// - Parameter transform: A closure that transforms an optional action into a new optional
   ///   action.
   /// - Returns: Button state over a new action.
-  public func map<NewAction>(_ transform: (Action?) -> NewAction?) -> ButtonState<NewAction> {
-    ButtonState<NewAction>(
+  public func map<NewAction>(_ transform: (Action?) -> NewAction?) -> ButtonState2<NewAction> {
+    ButtonState2<NewAction>(
       id: self.id,
       action: self.action.map(transform),
       label: self.label,
@@ -119,7 +119,7 @@ public struct ButtonState<Action>: Identifiable {
 }
 
 /// A type that wraps an action with additional context, _e.g._ for animation.
-public struct ButtonStateAction<Action> {
+public struct ButtonState2Action<Action> {
   public let type: _ActionType
 
   public static func send(_ action: Action?) -> Self {
@@ -145,7 +145,7 @@ public struct ButtonStateAction<Action> {
 
   public func map<NewAction>(
     _ transform: (Action?) -> NewAction?
-  ) -> ButtonStateAction<NewAction> {
+  ) -> ButtonState2Action<NewAction> {
     switch self.type {
     #if canImport(SwiftUI)
       case let .animatedSend(action, animation: animation):
@@ -167,7 +167,7 @@ public struct ButtonStateAction<Action> {
 /// A value that describes the purpose of a button.
 ///
 /// See `SwiftUI.ButtonRole` for more information.
-public enum ButtonStateRole: Sendable {
+public enum ButtonState2Role: Sendable {
   /// A role that indicates a cancel button.
   ///
   /// See `SwiftUI.ButtonRole.cancel` for more information.
@@ -179,9 +179,9 @@ public enum ButtonStateRole: Sendable {
   case destructive
 }
 
-extension ButtonState: ActionState {}
+extension ButtonState2: ActionState {}
 
-extension ButtonState: CustomDumpReflectable {
+extension ButtonState2: CustomDumpReflectable {
   public var customDumpMirror: Mirror {
     var children: [(label: String?, value: Any)] = []
     if let role = self.role {
@@ -197,7 +197,7 @@ extension ButtonState: CustomDumpReflectable {
   }
 }
 
-extension ButtonStateAction: CustomDumpReflectable {
+extension ButtonState2Action: CustomDumpReflectable {
   public var customDumpMirror: Mirror {
     switch self.type {
     case let .send(action):
@@ -222,10 +222,10 @@ extension ButtonStateAction: CustomDumpReflectable {
   }
 }
 
-extension ButtonStateAction: Equatable where Action: Equatable {}
-extension ButtonStateAction._ActionType: Equatable where Action: Equatable {}
-extension ButtonStateRole: Equatable {}
-extension ButtonState: Equatable where Action: Equatable {
+extension ButtonState2Action: Equatable where Action: Equatable {}
+extension ButtonState2Action._ActionType: Equatable where Action: Equatable {}
+extension ButtonState2Role: Equatable {}
+extension ButtonState2: Equatable where Action: Equatable {
   public static func == (lhs: Self, rhs: Self) -> Bool {
     lhs.action == rhs.action
       && lhs.label == rhs.label
@@ -233,8 +233,8 @@ extension ButtonState: Equatable where Action: Equatable {
   }
 }
 
-extension ButtonStateAction: Hashable where Action: Hashable {}
-extension ButtonStateAction._ActionType: Hashable where Action: Hashable {
+extension ButtonState2Action: Hashable where Action: Hashable {}
+extension ButtonState2Action._ActionType: Hashable where Action: Hashable {
   public func hash(into hasher: inout Hasher) {
     switch self {
     #if canImport(SwiftUI)
@@ -246,8 +246,8 @@ extension ButtonStateAction._ActionType: Hashable where Action: Hashable {
     }
   }
 }
-extension ButtonStateRole: Hashable {}
-extension ButtonState: Hashable where Action: Hashable {
+extension ButtonState2Role: Hashable {}
+extension ButtonState2: Hashable where Action: Hashable {
   public func hash(into hasher: inout Hasher) {
     hasher.combine(self.action)
     hasher.combine(self.label)
@@ -255,20 +255,20 @@ extension ButtonState: Hashable where Action: Hashable {
   }
 }
 
-extension ButtonStateAction: Sendable where Action: Sendable {}
-extension ButtonStateAction._ActionType: Sendable where Action: Sendable {}
-extension ButtonState: Sendable where Action: Sendable {}
+extension ButtonState2Action: Sendable where Action: Sendable {}
+extension ButtonState2Action._ActionType: Sendable where Action: Sendable {}
+extension ButtonState2: Sendable where Action: Sendable {}
 
 #if canImport(SwiftUI)
   // MARK: - SwiftUI bridging
 
   extension Alert.Button {
-    /// Initializes a `SwiftUI.Alert.Button` from `ButtonState` and an action handler.
+    /// Initializes a `SwiftUI.Alert.Button` from `ButtonState2` and an action handler.
     ///
     /// - Parameters:
     ///   - button: Button state.
     ///   - action: An action closure that is invoked when the button is tapped.
-    public init<Action>(_ button: ButtonState<Action>, action: @escaping (Action?) -> Void) {
+    public init<Action>(_ button: ButtonState2<Action>, action: @escaping (Action?) -> Void) {
       let action = { button.withAction(action) }
       switch button.role {
       case .cancel:
@@ -280,7 +280,7 @@ extension ButtonState: Sendable where Action: Sendable {}
       }
     }
 
-    /// Initializes a `SwiftUI.Alert.Button` from `ButtonState` and an async action handler.
+    /// Initializes a `SwiftUI.Alert.Button` from `ButtonState2` and an async action handler.
     ///
     /// > Warning: Async closures cannot be performed with animation. If the underlying action is
     /// > animated, a runtime warning will be emitted.
@@ -289,7 +289,7 @@ extension ButtonState: Sendable where Action: Sendable {}
     ///   - button: Button state.
     ///   - action: An action closure that is invoked when the button is tapped.
     public init<Action: Sendable>(
-      _ button: ButtonState<Action>,
+      _ button: ButtonState2<Action>,
       action: @escaping @Sendable (Action?) async -> Void
     ) {
       let action = { _ = Task { await button.withAction(action) } }
@@ -306,7 +306,7 @@ extension ButtonState: Sendable where Action: Sendable {}
 
   @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
   extension ButtonRole {
-    public init(_ role: ButtonStateRole) {
+    public init(_ role: ButtonState2Role) {
       switch role {
       case .cancel:
         self = .cancel
@@ -317,7 +317,7 @@ extension ButtonState: Sendable where Action: Sendable {}
   }
 
   extension Button where Label == Text {
-    /// Initializes a `SwiftUI.Button` from `ButtonState` and an async action handler.
+    /// Initializes a `SwiftUI.Button` from `ButtonState2` and an async action handler.
     ///
     /// - Parameters:
     ///   - button: Button state.
@@ -326,7 +326,7 @@ extension ButtonState: Sendable where Action: Sendable {}
     #if compiler(>=6)
       @MainActor
     #endif
-    public init<Action>(_ button: ButtonState<Action>, action: @escaping (Action?) -> Void) {
+    public init<Action>(_ button: ButtonState2<Action>, action: @escaping (Action?) -> Void) {
       self.init(
         role: button.role.map(ButtonRole.init),
         action: { button.withAction(action) }
@@ -335,7 +335,7 @@ extension ButtonState: Sendable where Action: Sendable {}
       }
     }
 
-    /// Initializes a `SwiftUI.Button` from `ButtonState` and an action handler.
+    /// Initializes a `SwiftUI.Button` from `ButtonState2` and an action handler.
     ///
     /// > Warning: Async closures cannot be performed with animation. If the underlying action is
     /// > animated, a runtime warning will be emitted.
@@ -345,7 +345,7 @@ extension ButtonState: Sendable where Action: Sendable {}
     ///   - action: An action closure that is invoked when the button is tapped.
     @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
     public init<Action: Sendable>(
-      _ button: ButtonState<Action>,
+      _ button: ButtonState2<Action>,
       action: @escaping @Sendable (Action?) async -> Void
     ) {
       self.init(
@@ -357,51 +357,3 @@ extension ButtonState: Sendable where Action: Sendable {}
     }
   }
 #endif
-
-@usableFromInline
-func debugCaseOutput(_ value: Any) -> String {
-  func debugCaseOutputHelp(_ value: Any) -> String {
-    let mirror = Mirror(reflecting: value)
-    switch mirror.displayStyle {
-    case .enum:
-      guard let child = mirror.children.first else {
-        let childOutput = "\(value)"
-        return childOutput == "\(type(of: value))" ? "" : ".\(childOutput)"
-      }
-      let childOutput = debugCaseOutputHelp(child.value)
-      return ".\(child.label ?? "")\(childOutput.isEmpty ? "" : "(\(childOutput))")"
-    case .tuple:
-      return mirror.children.map { label, value in
-        let childOutput = debugCaseOutputHelp(value)
-        return
-          "\(label.map { isUnlabeledArgument($0) ? "_:" : "\($0):" } ?? "")\(childOutput.isEmpty ? "" : " \(childOutput)")"
-      }
-      .joined(separator: ", ")
-    default:
-      return ""
-    }
-  }
-
-  return (value as? CustomDebugStringConvertible)?.debugDescription
-    ?? "\(typeName(type(of: value)))\(debugCaseOutputHelp(value))"
-}
-
-private func isUnlabeledArgument(_ label: String) -> Bool {
-  label.firstIndex(where: { $0 != "." && !$0.isNumber }) == nil
-}
-
-@usableFromInline
-func typeName(_ type: Any.Type) -> String {
-  var name = _typeName(type, qualified: true)
-  if let index = name.firstIndex(of: ".") {
-    name.removeSubrange(...index)
-  }
-  let sanitizedName =
-    name
-    .replacingOccurrences(
-      of: #"<.+>|\(unknown context at \$[[:xdigit:]]+\)\."#,
-      with: "",
-      options: .regularExpression
-    )
-  return sanitizedName
-}

@@ -1,8 +1,12 @@
 import Foundation
 
+public protocol ActionState<Action> {
+  associatedtype Action
+}
+
 public enum AnyActionState<Action> {
   case button(ButtonState<Action>)
-  case textField(ButtonState<Action>)
+  case textField(ButtonState2<Action>)
 
   public func map<NewAction>(
     _ transform: (Action?) -> NewAction?

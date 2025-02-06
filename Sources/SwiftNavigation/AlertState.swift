@@ -133,30 +133,48 @@ import Foundation
 /// ```
 public struct AlertState<Action>: Identifiable {
   public let id: UUID
-  public var buttons: [AnyActionState<Action>]
+  public var actions: [AnyActionState<Action>]
   public var message: TextState?
   public var title: TextState
 
+  public var buttons: [ButtonState<Action>] {
+    actions.compactMap {
+      guard case let .button(buttonState) = $0 else { return nil }
+      return buttonState
+    }
+  }
+
   init(
     id: UUID,
-    buttons: [ButtonState<Action>],
+    buttons: [any ActionState],
     message: TextState?,
     title: TextState
   ) {
     self.id = id
-    self.buttons = buttons.map(AnyActionState.button)
+    self.actions = buttons.compactMap {
+      switch $0 {
+      case let buttonState as ButtonState<Action>:
+        .button(buttonState)
+
+      case let buttonState2 as ButtonState2<Action>:
+        .textField(buttonState2)
+
+      default:
+        nil
+      }
+    }
     self.message = message
     self.title = title
   }
 
-  init(
+  private init(
     id: UUID,
     actions: [AnyActionState<Action>],
     message: TextState?,
     title: TextState
   ) {
     self.id = id
-    self.buttons = actions
+    self.actions = actions
     self.message = message
     self.title = title
   }
@@ -180,10 +198,33 @@ public struct AlertState<Action>: Identifiable {
     )
   }
 
+  /// Creates alert state.
+  ///
+  /// - Parameters:
+  ///   - title: The title of the alert.
+  ///   - actions: A ``ButtonStateBuilder`` returning the alert's actions.
+  ///   - message: The message for the alert.
+  @available(iOS 16.0.0, *)
+  public init(
+    title: () -> TextState,
+    @ActionStateBuilder<Action> actions: () -> [any ActionState<Action>] = { [] },
+    message: (() -> TextState)? = nil
+  ) {
+    self.init(
+      id: UUID(),
+      buttons: actions(),
+      message: message?(),
+      title: title()
+    )
+  }
+
   public func map<NewAction>(_ transform: (Action?) -> NewAction?) -> AlertState<NewAction> {
     AlertState<NewAction>(
       id: self.id,
-      actions: self.buttons.map { $0.map(transform) },
+      actions: self.buttons.map {
+        let actionState = AnyActionState.button($0)
+        return actionState.map(transform)
+      },
       message: self.message,
       title: self.title
     )

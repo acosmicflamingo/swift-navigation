@@ -21,8 +21,14 @@
         message: state.message.map { String(state: $0) },
         preferredStyle: .alert
       )
-      for button in state.buttons {
-        addAction(UIAlertAction(button, action: handler))
+      for action in state.actions {
+        switch action {
+        case let .button(buttonState):
+          addAction(UIAlertAction(buttonState, action: handler))
+
+        default:
+          continue
+        }
       }
     }
 

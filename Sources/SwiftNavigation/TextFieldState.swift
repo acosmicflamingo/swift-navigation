@@ -94,8 +94,8 @@ public struct TextFieldState<Action>: Identifiable {
     case let .send(action):
       perform(action)
 
-    case let .send2(action, text):
-      perform(action.embed(text))
+    case let .send2(action, _):
+      perform(action.embed(text2))
 
     #if canImport(SwiftUI)
       case let .animatedSend(action, animation):
@@ -121,8 +121,8 @@ public struct TextFieldState<Action>: Identifiable {
     case let .send(action):
       await perform(action)
 
-    case let .send2(action, text):
-      await perform(action.embed(text))
+    case let .send2(action, _):
+      await perform(action.embed(text2))
 
     #if canImport(SwiftUI)
       case let .animatedSend(action, _):

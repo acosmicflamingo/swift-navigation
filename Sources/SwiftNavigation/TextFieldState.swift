@@ -1,5 +1,6 @@
 import CustomDump
 import Foundation
+import ConcurrencyExtras
 import IssueReporting
 
 #if canImport(SwiftUI)
@@ -11,32 +12,27 @@ public struct TextFieldState<Action>: Identifiable {
   public let initialText: String
   public let action: TextFieldStateAction<Action>
   public let label: TextState
-  public let role: TextFieldStateRole?
 
   init(
     id: UUID,
     initialText: String = "",
     action: TextFieldStateAction<Action>,
-    label: TextState,
-    role: TextFieldStateRole?
+    label: TextState
   ) {
     self.id = id
     self.initialText = initialText
     self.action = action
     self.label = label
-    self.role = role
   }
 
   /// Creates button state.
   ///
   /// - Parameters:
-  ///   - role: An optional semantic role that describes the button. A value of `nil` means that the
-  ///     button doesn't have an assigned role.
+  ///   - initialText: Initial text for the text field
   ///   - action: The action to send when the user interacts with the button.
   ///   - label: A view that describes the purpose of the button's `action`.
   public init(
     initialText: String = "",
-    role: TextFieldStateRole? = nil,
     action: TextFieldStateAction<Action> = .send(nil),
     label: () -> TextState
   ) {
@@ -44,8 +40,7 @@ public struct TextFieldState<Action>: Identifiable {
       id: UUID(),
       initialText: initialText,
       action: action,
-      label: label(),
-      role: role
+      label: label()
     )
   }
 
@@ -58,7 +53,6 @@ public struct TextFieldState<Action>: Identifiable {
   ///   - label: A view that describes the purpose of the button's `action`.
   public init(
     initialText: String = "",
-    role: TextFieldStateRole? = nil,
     action: Action,
     label: () -> TextState
   ) {
@@ -66,8 +60,7 @@ public struct TextFieldState<Action>: Identifiable {
       id: UUID(),
       initialText: initialText,
       action: .send(action),
-      label: label(),
-      role: role
+      label: label()
     )
   }
 
@@ -129,8 +122,7 @@ public struct TextFieldState<Action>: Identifiable {
     TextFieldState<NewAction>(
       id: self.id,
       action: self.action.map(transform),
-      label: self.label,
-      role: self.role
+      label: self.label
     )
   }
 }
@@ -181,29 +173,12 @@ public struct TextFieldStateAction<Action> {
   }
 }
 
-/// A value that describes the purpose of a button.
-///
-/// See `SwiftUI.ButtonRole` for more information.
-public enum TextFieldStateRole: Sendable {
-  /// A role that indicates a cancel button.
-  ///
-  /// See `SwiftUI.ButtonRole.cancel` for more information.
-  case cancel
-
-  /// A role that indicates a destructive button.
-  ///
-  /// See `SwiftUI.ButtonRole.destructive` for more information.
-  case destructive
-}
-
 extension TextFieldState: ActionState {}
 
 extension TextFieldState: CustomDumpReflectable {
   public var customDumpMirror: Mirror {
     var children: [(label: String?, value: Any)] = []
-    if let role = self.role {
-      children.append(("role", role))
-    }
+    children.append(("initialText", self.initialText))
     children.append(("action", self.action))
     children.append(("label", self.label))
     return Mirror(
@@ -241,12 +216,11 @@ extension TextFieldStateAction: CustomDumpReflectable {
 
 extension TextFieldStateAction: Equatable where Action: Equatable {}
 extension TextFieldStateAction._ActionType: Equatable where Action: Equatable {}
-extension TextFieldStateRole: Equatable {}
 extension TextFieldState: Equatable where Action: Equatable {
   public static func == (lhs: Self, rhs: Self) -> Bool {
-    lhs.action == rhs.action
+    lhs.initialText == rhs.initialText
+      && lhs.action == rhs.action
       && lhs.label == rhs.label
-      && lhs.role == rhs.role
   }
 }
 
@@ -263,12 +237,11 @@ extension TextFieldStateAction._ActionType: Hashable where Action: Hashable {
     }
   }
 }
-extension TextFieldStateRole: Hashable {}
 extension TextFieldState: Hashable where Action: Hashable {
   public func hash(into hasher: inout Hasher) {
+    hasher.combine(self.initialText)
     hasher.combine(self.action)
     hasher.combine(self.label)
-    hasher.combine(self.role)
   }
 }
 
@@ -279,98 +252,63 @@ extension TextFieldState: Sendable where Action: Sendable {}
 #if canImport(SwiftUI)
   // MARK: - SwiftUI bridging
 
-  extension Alert.Button {
-    /// Initializes a `SwiftUI.Alert.Button` from `TextFieldState` and an action handler.
-    ///
-    /// - Parameters:
-    ///   - button: Button state.
-    ///   - action: An action closure that is invoked when the button is tapped.
-    public init<Action>(_ button: TextFieldState<Action>, action: @escaping (Action?) -> Void) {
-      let action = { button.withAction(action) }
-      switch button.role {
-      case .cancel:
-        self = .cancel(Text(button.label), action: action)
-      case .destructive:
-        self = .destructive(Text(button.label), action: action)
-      case .none:
-        self = .default(Text(button.label), action: action)
-      }
-    }
-
-    /// Initializes a `SwiftUI.Alert.Button` from `TextFieldState` and an async action handler.
-    ///
-    /// > Warning: Async closures cannot be performed with animation. If the underlying action is
-    /// > animated, a runtime warning will be emitted.
-    ///
-    /// - Parameters:
-    ///   - button: Button state.
-    ///   - action: An action closure that is invoked when the button is tapped.
-    public init<Action: Sendable>(
-      _ button: TextFieldState<Action>,
-      action: @escaping @Sendable (Action?) async -> Void
-    ) {
-      let action = { _ = Task { await button.withAction(action) } }
-      switch button.role {
-      case .cancel:
-        self = .cancel(Text(button.label), action: action)
-      case .destructive:
-        self = .destructive(Text(button.label), action: action)
-      case .none:
-        self = .default(Text(button.label), action: action)
-      }
-    }
-  }
-
-  @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
-  extension ButtonRole {
-    public init(_ role: TextFieldStateRole) {
-      switch role {
-      case .cancel:
-        self = .cancel
-      case .destructive:
-        self = .destructive
-      }
-    }
-  }
-
-  extension Button where Label == Text {
-    /// Initializes a `SwiftUI.Button` from `TextFieldState` and an async action handler.
-    ///
-    /// - Parameters:
-    ///   - button: Button state.
-    ///   - action: An action closure that is invoked when the button is tapped.
-    @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
-    #if compiler(>=6)
-      @MainActor
-    #endif
-    public init<Action>(_ button: TextFieldState<Action>, action: @escaping (Action?) -> Void) {
+  @available(iOS 16, macOS 13, tvOS 16, watchOS 8, *)
+  extension TextField where Label == Text {
+    public init<Action>(_ state: TextFieldState<Action>, action: @escaping (Action) -> Void)
+    where Action: Sendable {
+      let text = LockIsolated(state.initialText)
       self.init(
-        role: button.role.map(ButtonRole.init),
-        action: { button.withAction(action) }
+        text: Binding(
+          get: { text.value },
+          set: { newText in
+            text.withValue { $0 = newText }
+//            action(state.action.embed(newText))
+          }
+        )
       ) {
-        Text(button.label)
-      }
-    }
-
-    /// Initializes a `SwiftUI.Button` from `TextFieldState` and an action handler.
-    ///
-    /// > Warning: Async closures cannot be performed with animation. If the underlying action is
-    /// > animated, a runtime warning will be emitted.
-    ///
-    /// - Parameters:
-    ///   - button: Button state.
-    ///   - action: An action closure that is invoked when the button is tapped.
-    @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
-    public init<Action: Sendable>(
-      _ button: TextFieldState<Action>,
-      action: @escaping @Sendable (Action?) async -> Void
-    ) {
-      self.init(
-        role: button.role.map(ButtonRole.init),
-        action: { Task { await button.withAction(action) } }
-      ) {
-        Text(button.label)
+        Text(state.label)
       }
     }
   }
+
+//  extension Button where Label == Text {
+//    /// Initializes a `SwiftUI.Button` from `TextFieldState` and an async action handler.
+//    ///
+//    /// - Parameters:
+//    ///   - button: Button state.
+//    ///   - action: An action closure that is invoked when the button is tapped.
+//    @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
+//    #if compiler(>=6)
+//      @MainActor
+//    #endif
+//    public init<Action>(_ button: TextFieldState<Action>, action: @escaping (Action?) -> Void) {
+//      self.init(
+//        role: button.role.map(ButtonRole.init),
+//        action: { button.withAction(action) }
+//      ) {
+//        Text(button.label)
+//      }
+//    }
+//
+//    /// Initializes a `SwiftUI.Button` from `TextFieldState` and an action handler.
+//    ///
+//    /// > Warning: Async closures cannot be performed with animation. If the underlying action is
+//    /// > animated, a runtime warning will be emitted.
+//    ///
+//    /// - Parameters:
+//    ///   - button: Button state.
+//    ///   - action: An action closure that is invoked when the button is tapped.
+//    @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
+//    public init<Action: Sendable>(
+//      _ button: TextFieldState<Action>,
+//      action: @escaping @Sendable (Action?) async -> Void
+//    ) {
+//      self.init(
+//        role: button.role.map(ButtonRole.init),
+//        action: { Task { await button.withAction(action) } }
+//      ) {
+//        Text(button.label)
+//      }
+//    }
+//  }
 #endif

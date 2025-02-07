@@ -29,25 +29,6 @@ public struct TextFieldState<Action>: Identifiable {
   /// Creates button state.
   ///
   /// - Parameters:
-  ///   - initialText: Initial text for the text field
-  ///   - action: The action to send when the user interacts with the button.
-  ///   - label: A view that describes the purpose of the button's `action`.
-  public init(
-    initialText: String = "",
-    action: TextFieldStateAction<Action> = .send(nil),
-    placeholderText: () -> TextState
-  ) {
-    self.init(
-      id: UUID(),
-      initialText: initialText,
-      action: action,
-      placeholderText: placeholderText()
-    )
-  }
-
-  /// Creates button state.
-  ///
-  /// - Parameters:
   ///   - role: An optional semantic role that describes the button. A value of `nil` means that the
   ///     button doesn't have an assigned role.
   ///   - action: The action to send when the user interacts with the button.
@@ -70,7 +51,7 @@ public struct TextFieldState<Action>: Identifiable {
   /// - Parameter perform: Unwraps and passes a button's action to a closure to be performed. If the
   ///   action has an associated animation, the context will be wrapped using SwiftUI's
   ///   `withAnimation`.
-  public func withAction(_ perform: (Action?) -> Void) {
+  public func withAction(_ perform: (Action?) -> Void, text: String) {
     switch self.action.type {
     case let .send(action):
       perform(action)
@@ -90,7 +71,10 @@ public struct TextFieldState<Action>: Identifiable {
   ///
   /// - Parameter perform: Unwraps and passes a button's action to a closure to be performed.
   @MainActor
-  public func withAction(_ perform: @MainActor (Action?) async -> Void) async {
+  public func withAction(
+    _ perform: @MainActor (Action?) async -> Void,
+    text: String
+  ) async {
     switch self.action.type {
     case let .send(action):
       await perform(action)
@@ -131,6 +115,7 @@ public struct TextFieldState<Action>: Identifiable {
 /// A type that wraps an action with additional context, _e.g._ for animation.
 public struct TextFieldStateAction<Action> {
   public let type: _ActionType
+  public var root: AnyCasePath<Action, String>?
 
   public static func send(_ action: Action?) -> Self {
     .init(type: .send(action))
@@ -215,7 +200,12 @@ extension TextFieldStateAction: CustomDumpReflectable {
   }
 }
 
-extension TextFieldStateAction: Equatable where Action: Equatable {}
+extension TextFieldStateAction: Equatable where Action: Equatable {
+  public static func == (lhs: Self, rhs: Self) -> Bool {
+    lhs.root?.embed("LOL") == rhs.root?.embed("LOL")
+      && lhs.type == rhs.type
+  }
+}
 extension TextFieldStateAction._ActionType: Equatable where Action: Equatable {}
 extension TextFieldState: Equatable where Action: Equatable {
   public static func == (lhs: Self, rhs: Self) -> Bool {
@@ -225,7 +215,12 @@ extension TextFieldState: Equatable where Action: Equatable {
   }
 }
 
-extension TextFieldStateAction: Hashable where Action: Hashable {}
+extension TextFieldStateAction: Hashable where Action: Hashable {
+  public func hash(into hasher: inout Hasher) {
+    hasher.combine(self.root?.embed("LOL"))
+    hasher.combine(self.type)
+  }
+}
 extension TextFieldStateAction._ActionType: Hashable where Action: Hashable {
   public func hash(into hasher: inout Hasher) {
     switch self {
@@ -268,7 +263,8 @@ extension TextFieldState: Sendable where Action: Sendable {}
           get: { text },
           set: { newText in
             text = newText
-            //              action(textField.action.embed(newText))
+            action(textField.action2!.embed(newText))
+//            textField.withAction(action)
           }
         )
       ) {
@@ -288,7 +284,8 @@ extension TextFieldState: Sendable where Action: Sendable {}
           set: { newText in
             Task {
               text.withValue { $0 = newText }
-//              await action(textField.action2!.embed(newText))
+              await action(textField.action2!.embed(newText))
+//              await textField.withAction(action)
             }
           }
         )

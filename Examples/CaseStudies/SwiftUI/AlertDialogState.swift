@@ -83,6 +83,10 @@ private class FeatureModel {
     } message: {
       TextState(fact.description)
     }
+
+    DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) {
+      print(self.alert)
+    }
   }
 }
 

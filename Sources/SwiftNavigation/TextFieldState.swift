@@ -12,8 +12,11 @@ public struct TextFieldState<Action>: Identifiable {
   public let id: UUID
   public let initialText: String
   public var text: String
+  public var action2: Action?
   public var action: (@Sendable (String) -> Action?)?
   public let placeholderText: TextState
+
+  public mutating func updateText
 
   init(
     id: UUID,
@@ -21,6 +24,18 @@ public struct TextFieldState<Action>: Identifiable {
     action: (@Sendable (String) -> Action?)? = nil,
     placeholderText: TextState
   ) {
+    let ha = AnyCasePath<Action?, String?>(
+      embed: { text in
+        guard let text else { return nil }
+        return action?(text)
+      }, extract: { action in
+        guard let value = action as? String else { return nil }
+        return value
+    })
+    var ha2 = ha.embed("Hehe")
+    var ha3 = ha.extract(from: ha2)
+    print("ha2", ha2)
+    print("ha3", ha3)
     self.id = id
     self.initialText = initialText
     self.text = initialText
@@ -33,6 +48,26 @@ public struct TextFieldState<Action>: Identifiable {
     action: (@Sendable (String) -> Action?)? = nil,
     placeholderText: TextState
   ) {
+    let ha = AnyCasePath<Action?, String?>(
+      embed: { text in
+        guard let text else { return nil }
+        return action?(text)
+      },
+      extract: { action in
+        switch action {
+        case let .some(action):
+          guard case let value = action as? AnyCasePath<Action, String> else { return "" }
+          return value
+
+        case .none:
+          return nil
+        }
+      }
+    )
+    var ha2 = ha.embed("Hehe")
+    var ha3 = ha.extract(from: ha2)
+    print("ha2", ha2)
+    print("ha3", ha3)
     self.id = UUID()
     self.initialText = initialText
     self.text = initialText
@@ -187,13 +222,17 @@ extension TextFieldState: Sendable where Action: Sendable {}
     public init<Action: Sendable>(
       _ textField: TextFieldState<Action>,
       action: @escaping (Action?) -> Void
-    ) {
-      let textField = LockIsolated(textField)
+    ) where Action: CasePathable{
+      var textField = LockIsolated(textField)
       self.init(
         text: Binding(
           get: { textField.value.text },
           set: { newText in
             textField.withValue { $0.text = newText }
+            print("Hello there")
+            textField.withValue {
+              $0.action2!.
+            }
             action(textField.action?(newText))
           }
         )
@@ -213,6 +252,7 @@ extension TextFieldState: Sendable where Action: Sendable {}
           get: { textField.value.text },
           set: { newText in
             Task {
+              print("Hmm.....")
               textField.withValue { $0.text = newText }
               await action(textField.action?(newText))
             }

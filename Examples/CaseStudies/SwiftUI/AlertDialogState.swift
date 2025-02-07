@@ -42,7 +42,6 @@ private class FeatureModel {
 
   enum AlertAction {
     case getFact
-    case typeFact(String)
   }
 
   func numberFactButtonTapped() async {
@@ -53,10 +52,6 @@ private class FeatureModel {
     switch action {
     case .getFact:
       await getFact()
-
-    case .typeFact:
-      break
-
     case nil:
       break
     }
@@ -72,20 +67,14 @@ private class FeatureModel {
       ButtonState(role: .destructive) {
         TextState("OK")
       }
-      TextFieldState(
-        initialText: "LOL",
-        action: AlertAction.typeFact,
-        placeholderText: TextState("LOL")
-      )
+      TextFieldState(initialText: "LOL", action: .getFact) {
+        TextState("Get another fact")
+      }
       ButtonState(role: .cancel) {
         TextState("LOL")
       }
     } message: {
       TextState(fact.description)
-    }
-
-    DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) {
-      print(self.alert)
     }
   }
 }

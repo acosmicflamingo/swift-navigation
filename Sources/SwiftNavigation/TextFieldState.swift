@@ -11,79 +11,148 @@ import IssueReporting
 public struct TextFieldState<Action>: Identifiable {
   public let id: UUID
   public let initialText: String
-  public var text: String
-  public var action2: Action?
-  public var action: (@Sendable (String) -> Action?)?
+  public let action: TextFieldStateAction<Action>
   public let placeholderText: TextState
-
-  public mutating func updateText
 
   init(
     id: UUID,
     initialText: String = "",
-    action: (@Sendable (String) -> Action?)? = nil,
+    action: TextFieldStateAction<Action>,
     placeholderText: TextState
   ) {
-    let ha = AnyCasePath<Action?, String?>(
-      embed: { text in
-        guard let text else { return nil }
-        return action?(text)
-      }, extract: { action in
-        guard let value = action as? String else { return nil }
-        return value
-    })
-    var ha2 = ha.embed("Hehe")
-    var ha3 = ha.extract(from: ha2)
-    print("ha2", ha2)
-    print("ha3", ha3)
     self.id = id
     self.initialText = initialText
-    self.text = initialText
     self.action = action
     self.placeholderText = placeholderText
   }
 
+  /// Creates button state.
+  ///
+  /// - Parameters:
+  ///   - initialText: Initial text for the text field
+  ///   - action: The action to send when the user interacts with the button.
+  ///   - label: A view that describes the purpose of the button's `action`.
   public init(
     initialText: String = "",
-    action: (@Sendable (String) -> Action?)? = nil,
-    placeholderText: TextState
+    action: TextFieldStateAction<Action> = .send(nil),
+    placeholderText: () -> TextState
   ) {
-    let ha = AnyCasePath<Action?, String?>(
-      embed: { text in
-        guard let text else { return nil }
-        return action?(text)
-      },
-      extract: { action in
-        switch action {
-        case let .some(action):
-          guard case let value = action as? AnyCasePath<Action, String> else { return "" }
-          return value
-
-        case .none:
-          return nil
-        }
-      }
+    self.init(
+      id: UUID(),
+      initialText: initialText,
+      action: action,
+      placeholderText: placeholderText()
     )
-    var ha2 = ha.embed("Hehe")
-    var ha3 = ha.extract(from: ha2)
-    print("ha2", ha2)
-    print("ha3", ha3)
-    self.id = UUID()
-    self.initialText = initialText
-    self.text = initialText
-    self.action = action
-    self.placeholderText = placeholderText
   }
 
+  /// Creates button state.
+  ///
+  /// - Parameters:
+  ///   - initialText: Initial text for the text field
+  ///   - action: The action to send when the user interacts with the button.
+  ///   - label: A view that describes the purpose of the button's `action`.
+  public init(
+    initialText: String = "",
+    action: AnyCasePath<Action, String>,
+    placeholderText: () -> TextState
+  ) {
+    self.init(
+      id: UUID(),
+      initialText: initialText,
+      action: .send2(action, text: initialText),
+      placeholderText: placeholderText()
+    )
+  }
+
+  /// Creates button state.
+  ///
+  /// - Parameters:
+  ///   - role: An optional semantic role that describes the button. A value of `nil` means that the
+  ///     button doesn't have an assigned role.
+  ///   - action: The action to send when the user interacts with the button.
+  ///   - label: A view that describes the purpose of the button's `action`.
+  public init(
+    initialText: String = "",
+    action: Action,
+    placeholderText: () -> TextState
+  ) {
+    self.init(
+      id: UUID(),
+      initialText: initialText,
+      action: .send(action),
+      placeholderText: placeholderText()
+    )
+  }
+
+  /// Handle the button's action in a closure.
+  ///
+  /// - Parameter perform: Unwraps and passes a button's action to a closure to be performed. If the
+  ///   action has an associated animation, the context will be wrapped using SwiftUI's
+  ///   `withAnimation`.
+  public func withAction(_ perform: (Action?) -> Void, text2: String) {
+    switch self.action.type {
+    case let .send(action):
+      perform(action)
+
+    case let .send2(action, text):
+      perform(action.embed(text))
+
+    #if canImport(SwiftUI)
+      case let .animatedSend(action, animation):
+        withAnimation(animation) {
+          perform(action)
+        }
+    #endif
+    }
+  }
+
+  /// Handle the button's action in an async closure.
+  ///
+  /// > Warning: Async closures cannot be performed with animation. If the underlying action is
+  /// > animated, a runtime warning will be emitted.
+  ///
+  /// - Parameter perform: Unwraps and passes a button's action to a closure to be performed.
+  @MainActor
+  public func withAction(
+    _ perform: @MainActor (Action?) async -> Void,
+    text2: String
+  ) async {
+    switch self.action.type {
+    case let .send(action):
+      await perform(action)
+
+    case let .send2(action, text):
+      await perform(action.embed(text))
+
+    #if canImport(SwiftUI)
+      case let .animatedSend(action, _):
+        var output = ""
+        customDump(self.action, to: &output, indent: 4)
+        reportIssue(
+          """
+          An animated action was performed asynchronously: …
+
+            Action:
+          \((output))
+
+          Asynchronous actions cannot be animated. Evaluate this action in a synchronous closure, \
+          or use 'SwiftUI.withAnimation' explicitly.
+          """
+        )
+        await perform(action)
+    #endif
+    }
+  }
+
+  /// Transforms a button state's action into a new action.
+  ///
+  /// - Parameter transform: A closure that transforms an optional action into a new optional
   ///   action.
   /// - Returns: Button state over a new action.
-  public func map<NewAction>(
-    _ transform: @escaping @Sendable (Action?) -> NewAction?
-  ) -> TextFieldState<NewAction>
-  where Action: Sendable {
+  public func map<NewAction>(_ transform: (Action?) -> NewAction?) -> TextFieldState<NewAction> {
     TextFieldState<NewAction>(
       id: self.id,
-      action: { transform(action?($0)) },
+      action: self.action.map(transform),
       placeholderText: self.placeholderText
     )
   }
@@ -92,6 +161,13 @@ public struct TextFieldState<Action>: Identifiable {
 /// A type that wraps an action with additional context, _e.g._ for animation.
 public struct TextFieldStateAction<Action> {
   public let type: _ActionType
+
+  public static func send2(
+    _ action: AnyCasePath<Action, String>,
+    text: String
+  ) -> Self {
+    .init(type: .send(action.embed(text)))
+  }
 
   public static func send(_ action: Action?) -> Self {
     .init(type: .send(action))
@@ -111,6 +187,9 @@ public struct TextFieldStateAction<Action> {
     #endif
     case let .send(action):
       return action
+
+    case let .send2(action, text):
+      return action.embed(text)
     }
   }
 
@@ -124,11 +203,15 @@ public struct TextFieldStateAction<Action> {
     #endif
     case let .send(action):
       return .send(transform(action))
+
+    case let .send2(action, text):
+      return .send(transform(action.embed(text)))
     }
   }
 
   public enum _ActionType {
     case send(Action?)
+    case send2(AnyCasePath<Action, String>, String)
     #if canImport(SwiftUI)
       case animatedSend(Action?, animation: Animation?)
     #endif
@@ -162,6 +245,15 @@ extension TextFieldStateAction: CustomDumpReflectable {
         ],
         displayStyle: .enum
       )
+
+    case let .send2(action, text):
+      return Mirror(
+        self,
+        children: [
+          "send": (action, text: text)
+        ],
+        displayStyle: .enum
+      )
     #if canImport(SwiftUI)
       case let .animatedSend(action, animation):
         return Mirror(
@@ -177,11 +269,36 @@ extension TextFieldStateAction: CustomDumpReflectable {
 }
 
 extension TextFieldStateAction: Equatable where Action: Equatable {}
-extension TextFieldStateAction._ActionType: Equatable where Action: Equatable {}
+extension TextFieldStateAction._ActionType: Equatable where Action: Equatable {
+  public static func == (lhs: Self, rhs: Self) -> Bool {
+    switch (lhs, rhs) {
+    case let (.send(lhs), .send(rhs)):
+      lhs == rhs
+
+    case let (
+      .send2(lhsAction, lhsText),
+      .send2(rhsAction, rhsText)
+    ):
+      lhsAction.embed(lhsText) == rhsAction.embed(rhsText)
+
+  #if canImport(SwiftUI)
+    case let (
+      .animatedSend(lhsAction, lhsAnimation),
+      .animatedSend(rhsAction, rhsAnimation)
+    ):
+      lhsAction == rhsAction
+        && lhsAnimation == rhsAnimation
+
+    default:
+      false
+    #endif
+    }
+  }
+}
 extension TextFieldState: Equatable where Action: Equatable {
   public static func == (lhs: Self, rhs: Self) -> Bool {
     lhs.initialText == rhs.initialText
-      && lhs.text == rhs.text
+      && lhs.action == rhs.action
       && lhs.placeholderText == rhs.placeholderText
   }
 }
@@ -196,13 +313,16 @@ extension TextFieldStateAction._ActionType: Hashable where Action: Hashable {
     #endif
     case let .send(action):
       hasher.combine(action)
+
+    case let .send2(action, text):
+      hasher.combine(action.embed(text))
     }
   }
 }
 extension TextFieldState: Hashable where Action: Hashable {
   public func hash(into hasher: inout Hasher) {
     hasher.combine(self.initialText)
-    hasher.combine(self.text)
+    hasher.combine(self.action)
     hasher.combine(self.placeholderText)
   }
 }
@@ -222,18 +342,14 @@ extension TextFieldState: Sendable where Action: Sendable {}
     public init<Action: Sendable>(
       _ textField: TextFieldState<Action>,
       action: @escaping (Action?) -> Void
-    ) where Action: CasePathable{
-      var textField = LockIsolated(textField)
+    ) {
+      var text = textField.initialText
       self.init(
         text: Binding(
-          get: { textField.value.text },
+          get: { text },
           set: { newText in
-            textField.withValue { $0.text = newText }
-            print("Hello there")
-            textField.withValue {
-              $0.action2!.
-            }
-            action(textField.action?(newText))
+            text = newText
+            textField.withAction(action, text2: newText)
           }
         )
       ) {
@@ -246,15 +362,14 @@ extension TextFieldState: Sendable where Action: Sendable {}
       _ textField: TextFieldState<Action>,
       action: @escaping @Sendable (Action?) async -> Void
     ) {
-      let textField = LockIsolated(textField)
+      let text = LockIsolated(textField.initialText)
       self.init(
         text: Binding(
-          get: { textField.value.text },
+          get: { text.value },
           set: { newText in
             Task {
-              print("Hmm.....")
-              textField.withValue { $0.text = newText }
-              await action(textField.action?(newText))
+              text.withValue { $0 = newText }
+              await textField.withAction(action, text2: newText)
             }
           }
         )

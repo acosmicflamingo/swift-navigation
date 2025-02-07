@@ -26,9 +26,10 @@
         case let .button(buttonState):
           addAction(UIAlertAction(buttonState, action: handler))
 
-        case var .textField(textFieldState):
+        case let .textField(textFieldState):
           addTextField(configurationHandler: { textField in
-            _ = textFieldState.action
+            let text = textField.text ?? ""
+            textFieldState.withAction(handler, text2: text)
           })
         }
       }

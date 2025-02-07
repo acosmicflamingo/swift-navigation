@@ -21,9 +21,8 @@ public enum AnyActionState<Action> {
   }
 
   public func map<NewAction>(
-    _ transform: @escaping @Sendable (Action?) -> NewAction?
-  ) -> AnyActionState<NewAction>
-  where Action: Sendable {
+    _ transform: (Action?) -> NewAction?
+  ) -> AnyActionState<NewAction> {
     switch self {
     case let .button(buttonState):
       .button(buttonState.map(transform))

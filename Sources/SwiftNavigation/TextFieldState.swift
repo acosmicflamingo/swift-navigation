@@ -11,7 +11,7 @@ import IssueReporting
 public struct TextFieldState<Action>: Identifiable {
   public let id: UUID
   public let initialText: String
-  public let action: TextFieldStateAction<Action>
+  public var action: TextFieldStateAction<Action>
   public let placeholderText: TextState
 
   init(
@@ -89,7 +89,7 @@ public struct TextFieldState<Action>: Identifiable {
   /// - Parameter perform: Unwraps and passes a button's action to a closure to be performed. If the
   ///   action has an associated animation, the context will be wrapped using SwiftUI's
   ///   `withAnimation`.
-  public func withAction(_ perform: (Action?) -> Void, text2: String) {
+  public mutating func withAction(_ perform: (Action?) -> Void, text2: String) {
     switch self.action.type {
     case let .send(action):
       perform(action)
@@ -104,6 +104,7 @@ public struct TextFieldState<Action>: Identifiable {
         }
     #endif
     }
+    self.action.text = text2
   }
 
   /// Handle the button's action in an async closure.
@@ -113,7 +114,7 @@ public struct TextFieldState<Action>: Identifiable {
   ///
   /// - Parameter perform: Unwraps and passes a button's action to a closure to be performed.
   @MainActor
-  public func withAction(
+  public mutating func withAction(
     _ perform: @MainActor (Action?) async -> Void,
     text2: String
   ) async {
@@ -161,21 +162,22 @@ public struct TextFieldState<Action>: Identifiable {
 /// A type that wraps an action with additional context, _e.g._ for animation.
 public struct TextFieldStateAction<Action> {
   public let type: _ActionType
+  public var text: String
 
   public static func send2(
     _ action: AnyCasePath<Action, String>,
     text: String
   ) -> Self {
-    .init(type: .send(action.embed(text)))
+    .init(type: .send(action.embed(text)), text: text)
   }
 
   public static func send(_ action: Action?) -> Self {
-    .init(type: .send(action))
+    .init(type: .send(action), text: "")
   }
 
   #if canImport(SwiftUI)
     public static func send(_ action: Action?, animation: Animation?) -> Self {
-      .init(type: .animatedSend(action, animation: animation))
+      .init(type: .animatedSend(action, animation: animation), text: "")
     }
   #endif
 

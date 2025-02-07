@@ -8,17 +8,20 @@ import IssueReporting
 
 public struct TextFieldState<Action>: Identifiable {
   public let id: UUID
+  public let initialText: String
   public let action: TextFieldStateAction<Action>
   public let label: TextState
   public let role: TextFieldStateRole?
 
   init(
     id: UUID,
+    initialText: String = "",
     action: TextFieldStateAction<Action>,
     label: TextState,
     role: TextFieldStateRole?
   ) {
     self.id = id
+    self.initialText = initialText
     self.action = action
     self.label = label
     self.role = role
@@ -32,11 +35,18 @@ public struct TextFieldState<Action>: Identifiable {
   ///   - action: The action to send when the user interacts with the button.
   ///   - label: A view that describes the purpose of the button's `action`.
   public init(
+    initialText: String = "",
     role: TextFieldStateRole? = nil,
     action: TextFieldStateAction<Action> = .send(nil),
     label: () -> TextState
   ) {
-    self.init(id: UUID(), action: action, label: label(), role: role)
+    self.init(
+      id: UUID(),
+      initialText: initialText,
+      action: action,
+      label: label(),
+      role: role
+    )
   }
 
   /// Creates button state.
@@ -47,11 +57,18 @@ public struct TextFieldState<Action>: Identifiable {
   ///   - action: The action to send when the user interacts with the button.
   ///   - label: A view that describes the purpose of the button's `action`.
   public init(
+    initialText: String = "",
     role: TextFieldStateRole? = nil,
     action: Action,
     label: () -> TextState
   ) {
-    self.init(id: UUID(), action: .send(action), label: label(), role: role)
+    self.init(
+      id: UUID(),
+      initialText: initialText,
+      action: .send(action),
+      label: label(),
+      role: role
+    )
   }
 
   /// Handle the button's action in a closure.

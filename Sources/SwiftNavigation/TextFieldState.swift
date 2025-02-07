@@ -11,18 +11,18 @@ public struct TextFieldState<Action>: Identifiable {
   public let id: UUID
   public let initialText: String
   public let action: TextFieldStateAction<Action>
-  public let label: TextState
+  public let placeholderText: TextState
 
   init(
     id: UUID,
     initialText: String = "",
     action: TextFieldStateAction<Action>,
-    label: TextState
+    placeholderText: TextState
   ) {
     self.id = id
     self.initialText = initialText
     self.action = action
-    self.label = label
+    self.placeholderText = placeholderText
   }
 
   /// Creates button state.
@@ -34,13 +34,13 @@ public struct TextFieldState<Action>: Identifiable {
   public init(
     initialText: String = "",
     action: TextFieldStateAction<Action> = .send(nil),
-    label: () -> TextState
+    placeholderText: () -> TextState
   ) {
     self.init(
       id: UUID(),
       initialText: initialText,
       action: action,
-      label: label()
+      placeholderText: placeholderText()
     )
   }
 
@@ -54,13 +54,13 @@ public struct TextFieldState<Action>: Identifiable {
   public init(
     initialText: String = "",
     action: Action,
-    label: () -> TextState
+    placeholderText: () -> TextState
   ) {
     self.init(
       id: UUID(),
       initialText: initialText,
       action: .send(action),
-      label: label()
+      placeholderText: placeholderText()
     )
   }
 
@@ -122,7 +122,7 @@ public struct TextFieldState<Action>: Identifiable {
     TextFieldState<NewAction>(
       id: self.id,
       action: self.action.map(transform),
-      label: self.label
+      placeholderText: self.placeholderText
     )
   }
 }
@@ -180,7 +180,7 @@ extension TextFieldState: CustomDumpReflectable {
     var children: [(label: String?, value: Any)] = []
     children.append(("initialText", self.initialText))
     children.append(("action", self.action))
-    children.append(("label", self.label))
+    children.append(("placeholderText", self.placeholderText))
     return Mirror(
       self,
       children: children,
@@ -220,7 +220,7 @@ extension TextFieldState: Equatable where Action: Equatable {
   public static func == (lhs: Self, rhs: Self) -> Bool {
     lhs.initialText == rhs.initialText
       && lhs.action == rhs.action
-      && lhs.label == rhs.label
+      && lhs.placeholderText == rhs.placeholderText
   }
 }
 
@@ -241,7 +241,7 @@ extension TextFieldState: Hashable where Action: Hashable {
   public func hash(into hasher: inout Hasher) {
     hasher.combine(self.initialText)
     hasher.combine(self.action)
-    hasher.combine(self.label)
+    hasher.combine(self.placeholderText)
   }
 }
 
@@ -271,7 +271,7 @@ extension TextFieldState: Sendable where Action: Sendable {}
           }
         )
       ) {
-        Text(textField.label)
+        Text(textField.placeholderText)
       }
     }
 
@@ -290,7 +290,7 @@ extension TextFieldState: Sendable where Action: Sendable {}
           }
         )
       ) {
-        Text(textField.label)
+        Text(textField.placeholderText)
       }
     }
   }

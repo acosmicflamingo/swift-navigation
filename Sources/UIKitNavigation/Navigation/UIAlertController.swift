@@ -98,17 +98,19 @@
   @available(watchOS, unavailable)
   extension UIAlertAction {
     public convenience init<Action>(
-      _ button: TextFieldState<Action>,
+      _ state: TextFieldState<Action>,
       action handler: @escaping (_ action: Action?) -> Void = { (_: Never?) in }
     ) {
       self.init(
-        title: String(state: button.label),
+        title: String(state: state.placeholderText),
         style: .default
       ) { _ in
-        button.withAction(handler)
+        state.withAction(handler)
       }
       if #available(iOS 15, macOS 12, tvOS 15, watchOS 8, *) {
-        self.accessibilityLabel = button.label.accessibilityLabel.map { String(state: $0) }
+        self.accessibilityLabel = state.placeholderText.accessibilityLabel.map {
+          String(state: $0)
+        }
       }
     }
   }

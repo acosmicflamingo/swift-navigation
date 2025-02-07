@@ -67,7 +67,7 @@ private class FeatureModel {
       ButtonState(role: .destructive) {
         TextState("OK")
       }
-      TextFieldState(action: .getFact) {
+      TextFieldState(initialText: "LOL", action: .getFact) {
         TextState("Get another fact")
       }
       ButtonState(role: .cancel) {

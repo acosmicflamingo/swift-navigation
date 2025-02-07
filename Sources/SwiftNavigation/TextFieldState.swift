@@ -48,11 +48,7 @@ public struct TextFieldState<Action>: Identifiable {
   where Action: Sendable {
     TextFieldState<NewAction>(
       id: self.id,
-      action: { text in
-        let action2 = action?(text)
-        let newAction = transform(action2)
-        return newAction
-      },
+      action: { transform(action?($0)) },
       placeholderText: self.placeholderText
     )
   }
@@ -192,13 +188,13 @@ extension TextFieldState: Sendable where Action: Sendable {}
       _ textField: TextFieldState<Action>,
       action: @escaping (Action?) -> Void
     ) {
-      var text = textField.initialText
+      let textField = LockIsolated(textField)
       self.init(
         text: Binding(
-          get: { text },
+          get: { textField.value.text },
           set: { newText in
-            text = newText
-            action(textField.action?(text))
+            textField.withValue { $0.text = newText }
+            action(textField.action?(newText))
           }
         )
       ) {
@@ -211,13 +207,13 @@ extension TextFieldState: Sendable where Action: Sendable {}
       _ textField: TextFieldState<Action>,
       action: @escaping @Sendable (Action?) async -> Void
     ) {
-      let text = LockIsolated(textField.initialText)
+      let textField = LockIsolated(textField)
       self.init(
         text: Binding(
-          get: { text.value },
+          get: { textField.value.text },
           set: { newText in
             Task {
-              text.withValue { $0 = newText }
+              textField.withValue { $0.text = newText }
               await action(textField.action?(newText))
             }
           }

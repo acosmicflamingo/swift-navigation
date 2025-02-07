@@ -11,6 +11,7 @@ public struct TextFieldState<Action>: Identifiable {
   public let id: UUID
   public let initialText: String
   public let action: TextFieldStateAction<Action>
+  public var action2: AnyCasePath<Action, String>?
   public let placeholderText: TextState
 
   init(
@@ -285,8 +286,10 @@ extension TextFieldState: Sendable where Action: Sendable {}
         text: Binding(
           get: { text.value },
           set: { newText in
-            text.withValue { $0 = newText }
-            //              action(textField.action.embed(newText))
+            Task {
+              text.withValue { $0 = newText }
+//              await action(textField.action2!.embed(newText))
+            }
           }
         )
       ) {

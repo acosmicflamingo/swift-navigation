@@ -195,7 +195,9 @@
             Button(buttonState, action: handler)
 
           case let .textField(textFieldState):
-            Button(textFieldState, action: handler)
+            if #available(iOS 16, *) {
+              TextField(textFieldState, action: handler)
+            }
           }
         }
       } message: {

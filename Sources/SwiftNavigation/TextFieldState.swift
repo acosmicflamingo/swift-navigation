@@ -252,63 +252,46 @@ extension TextFieldState: Sendable where Action: Sendable {}
 #if canImport(SwiftUI)
   // MARK: - SwiftUI bridging
 
-  @available(iOS 16, macOS 13, tvOS 16, watchOS 8, *)
   extension TextField where Label == Text {
-    public init<Action>(_ state: TextFieldState<Action>, action: @escaping (Action) -> Void)
-    where Action: Sendable {
-      let text = LockIsolated(state.initialText)
+    @available(iOS 16, macOS 13, tvOS 16, watchOS 8, *)
+    #if compiler(>=6)
+      @MainActor
+    #endif
+    public init<Action: Sendable>(
+      _ textField: TextFieldState<Action>,
+      action: @escaping (Action?) -> Void
+    ) {
+      var text = textField.initialText
+      self.init(
+        text: Binding(
+          get: { text },
+          set: { newText in
+            text = newText
+            //              action(textField.action.embed(newText))
+          }
+        )
+      ) {
+        Text(textField.label)
+      }
+    }
+
+    @available(iOS 16, macOS 13, tvOS 16, watchOS 8, *)
+    public init<Action: Sendable>(
+      _ textField: TextFieldState<Action>,
+      action: @escaping @Sendable (Action?) async -> Void
+    ) {
+      let text = LockIsolated(textField.initialText)
       self.init(
         text: Binding(
           get: { text.value },
           set: { newText in
             text.withValue { $0 = newText }
-//            action(state.action.embed(newText))
+            //              action(textField.action.embed(newText))
           }
         )
       ) {
-        Text(state.label)
+        Text(textField.label)
       }
     }
   }
-
-//  extension Button where Label == Text {
-//    /// Initializes a `SwiftUI.Button` from `TextFieldState` and an async action handler.
-//    ///
-//    /// - Parameters:
-//    ///   - button: Button state.
-//    ///   - action: An action closure that is invoked when the button is tapped.
-//    @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
-//    #if compiler(>=6)
-//      @MainActor
-//    #endif
-//    public init<Action>(_ button: TextFieldState<Action>, action: @escaping (Action?) -> Void) {
-//      self.init(
-//        role: button.role.map(ButtonRole.init),
-//        action: { button.withAction(action) }
-//      ) {
-//        Text(button.label)
-//      }
-//    }
-//
-//    /// Initializes a `SwiftUI.Button` from `TextFieldState` and an action handler.
-//    ///
-//    /// > Warning: Async closures cannot be performed with animation. If the underlying action is
-//    /// > animated, a runtime warning will be emitted.
-//    ///
-//    /// - Parameters:
-//    ///   - button: Button state.
-//    ///   - action: An action closure that is invoked when the button is tapped.
-//    @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
-//    public init<Action: Sendable>(
-//      _ button: TextFieldState<Action>,
-//      action: @escaping @Sendable (Action?) async -> Void
-//    ) {
-//      self.init(
-//        role: button.role.map(ButtonRole.init),
-//        action: { Task { await button.withAction(action) } }
-//      ) {
-//        Text(button.label)
-//      }
-//    }
-//  }
 #endif

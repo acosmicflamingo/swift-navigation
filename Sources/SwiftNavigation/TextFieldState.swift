@@ -11,70 +11,48 @@ import IssueReporting
 public struct TextFieldState<Action>: Identifiable {
   public let id: UUID
   public let initialText: String
-  public let root: AnyCasePath<Action, String>
-  public var action: Action
+  public var text: String
+  public var action: (@Sendable (String) -> Action?)?
   public let placeholderText: TextState
 
-  public var text: String {
-    get { root.extract(from: action) ?? "" }
-    set { action = root.embed(newValue) }
-  }
-
   init(
     id: UUID,
     initialText: String = "",
-    root: AnyCasePath<Action, String>,
-    action: Action?,
+    action: (@Sendable (String) -> Action?)? = nil,
     placeholderText: TextState
   ) {
     self.id = id
     self.initialText = initialText
-    self.root = root
-    self.action = root.embed(initialText)
-    self.placeholderText = placeholderText
-  }
-
-  init(
-    id: UUID,
-    initialText: String = "",
-    action: Action,
-    placeholderText: TextState
-  ) {
-    self.id = id
-    self.initialText = initialText
+    self.text = initialText
     self.action = action
     self.placeholderText = placeholderText
   }
 
-  /// Handle the button's action in a closure.
-  ///
-  /// - Parameter perform: Unwraps and passes a button's action to a closure to be performed. If the
-  ///   action has an associated animation, the context will be wrapped using SwiftUI's
-  ///   `withAnimation`.
-  public func withAction(_ perform: (Action?) -> Void) {
-    perform(action)
+  public init(
+    initialText: String = "",
+    action: (@Sendable (String) -> Action?)? = nil,
+    placeholderText: TextState
+  ) {
+    self.id = UUID()
+    self.initialText = initialText
+    self.text = initialText
+    self.action = action
+    self.placeholderText = placeholderText
   }
 
-  /// Handle the button's action in an async closure.
-  ///
-  /// > Warning: Async closures cannot be performed with animation. If the underlying action is
-  /// > animated, a runtime warning will be emitted.
-  ///
-  /// - Parameter perform: Unwraps and passes a button's action to a closure to be performed.
-  @MainActor
-  public func withAction(_ perform: @MainActor (Action?) async -> Void) async {
-    await perform(action)
-  }
-
-  /// Transforms a button state's action into a new action.
-  ///
-  /// - Parameter transform: A closure that transforms an optional action into a new optional
   ///   action.
   /// - Returns: Button state over a new action.
-  public func map<NewAction>(_ transform: (Action) -> NewAction) -> TextFieldState<NewAction> {
-    return TextFieldState<NewAction>(
+  public func map<NewAction>(
+    _ transform: @escaping @Sendable (Action?) -> NewAction?
+  ) -> TextFieldState<NewAction>
+  where Action: Sendable {
+    TextFieldState<NewAction>(
       id: self.id,
-      action: transform(self.action),
+      action: { text in
+        let action2 = action?(text)
+        let newAction = transform(action2)
+        return newAction
+      },
       placeholderText: self.placeholderText
     )
   }
@@ -83,7 +61,6 @@ public struct TextFieldState<Action>: Identifiable {
 /// A type that wraps an action with additional context, _e.g._ for animation.
 public struct TextFieldStateAction<Action> {
   public let type: _ActionType
-  public var root: AnyCasePath<Action, String>?
 
   public static func send(_ action: Action?) -> Self {
     .init(type: .send(action))
@@ -168,27 +145,17 @@ extension TextFieldStateAction: CustomDumpReflectable {
   }
 }
 
-extension TextFieldStateAction: Equatable where Action: Equatable {
-  public static func == (lhs: Self, rhs: Self) -> Bool {
-    lhs.root?.embed("LOL") == rhs.root?.embed("LOL")
-      && lhs.type == rhs.type
-  }
-}
+extension TextFieldStateAction: Equatable where Action: Equatable {}
 extension TextFieldStateAction._ActionType: Equatable where Action: Equatable {}
 extension TextFieldState: Equatable where Action: Equatable {
   public static func == (lhs: Self, rhs: Self) -> Bool {
     lhs.initialText == rhs.initialText
-      && lhs.action == rhs.action
+      && lhs.text == rhs.text
       && lhs.placeholderText == rhs.placeholderText
   }
 }
 
-extension TextFieldStateAction: Hashable where Action: Hashable {
-  public func hash(into hasher: inout Hasher) {
-    hasher.combine(self.root?.embed("LOL"))
-    hasher.combine(self.type)
-  }
-}
+extension TextFieldStateAction: Hashable where Action: Hashable {}
 extension TextFieldStateAction._ActionType: Hashable where Action: Hashable {
   public func hash(into hasher: inout Hasher) {
     switch self {
@@ -204,7 +171,7 @@ extension TextFieldStateAction._ActionType: Hashable where Action: Hashable {
 extension TextFieldState: Hashable where Action: Hashable {
   public func hash(into hasher: inout Hasher) {
     hasher.combine(self.initialText)
-    hasher.combine(self.action)
+    hasher.combine(self.text)
     hasher.combine(self.placeholderText)
   }
 }
@@ -225,13 +192,13 @@ extension TextFieldState: Sendable where Action: Sendable {}
       _ textField: TextFieldState<Action>,
       action: @escaping (Action?) -> Void
     ) {
-      var textField = textField
+      var text = textField.initialText
       self.init(
         text: Binding(
-          get: { textField.text },
+          get: { text },
           set: { newText in
-            textField.text = newText
-            textField.withAction(action)
+            text = newText
+            action(textField.action?(text))
           }
         )
       ) {
@@ -251,7 +218,7 @@ extension TextFieldState: Sendable where Action: Sendable {}
           set: { newText in
             Task {
               text.withValue { $0 = newText }
-              await textField.withAction(action, text: newText)
+              await action(textField.action?(newText))
             }
           }
         )

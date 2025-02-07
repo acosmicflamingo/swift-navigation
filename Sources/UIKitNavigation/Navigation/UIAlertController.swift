@@ -26,10 +26,9 @@
         case let .button(buttonState):
           addAction(UIAlertAction(buttonState, action: handler))
 
-        case let .textField(textFieldState):
+        case var .textField(textFieldState):
           addTextField(configurationHandler: { textField in
-            let text = textField.text ?? ""
-            textFieldState.withAction(handler, text: text)
+            _ = textFieldState.action
           })
         }
       }
@@ -90,32 +89,6 @@
       }
       if #available(iOS 15, macOS 12, tvOS 15, watchOS 8, *) {
         self.accessibilityLabel = button.label.accessibilityLabel.map { String(state: $0) }
-      }
-    }
-  }
-
-  @available(iOS 13, *)
-  @available(macCatalyst 13, *)
-  @available(macOS, unavailable)
-  @available(tvOS 13, *)
-  @available(watchOS, unavailable)
-  extension UIAlertAction {
-    public convenience init<Action>(
-      _ state: TextFieldState<Action>,
-      textField: UITextField,
-      action handler: @escaping (_ action: Action?) -> Void = { (_: Never?) in }
-    ) {
-      self.init(
-        title: String(state: state.placeholderText),
-        style: .default
-      ) { [weak textField] _ in
-        guard let textField else { return }
-        state.withAction(handler, text: textField.text ?? "")
-      }
-      if #available(iOS 15, macOS 12, tvOS 15, watchOS 8, *) {
-        self.accessibilityLabel = state.placeholderText.accessibilityLabel.map {
-          String(state: $0)
-        }
       }
     }
   }

@@ -218,7 +218,10 @@ public struct AlertState<Action>: Identifiable {
     )
   }
 
-  public func map<NewAction>(_ transform: (Action?) -> NewAction?) -> AlertState<NewAction> {
+  public func map<NewAction>(
+    _ transform: @escaping @Sendable (Action?) -> NewAction?
+  ) -> AlertState<NewAction>
+  where Action: Sendable {
     AlertState<NewAction>(
       id: self.id,
       actions: self.buttons.map {

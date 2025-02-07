@@ -52,16 +52,8 @@ public struct TextFieldState<Action>: Identifiable {
   ///   action has an associated animation, the context will be wrapped using SwiftUI's
   ///   `withAnimation`.
   public func withAction(_ perform: (Action?) -> Void, text: String) {
-    switch self.action.type {
-    case let .send(action):
-      perform(action)
-    #if canImport(SwiftUI)
-      case let .animatedSend(action, animation):
-        withAnimation(animation) {
-          perform(action)
-        }
-    #endif
-    }
+    let action = self.action2!.embed(text)
+    perform(action)
   }
 
   /// Handle the button's action in an async closure.
@@ -75,27 +67,8 @@ public struct TextFieldState<Action>: Identifiable {
     _ perform: @MainActor (Action?) async -> Void,
     text: String
   ) async {
-    switch self.action.type {
-    case let .send(action):
-      await perform(action)
-    #if canImport(SwiftUI)
-      case let .animatedSend(action, _):
-        var output = ""
-        customDump(self.action, to: &output, indent: 4)
-        reportIssue(
-          """
-          An animated action was performed asynchronously: …
-
-            Action:
-          \((output))
-
-          Asynchronous actions cannot be animated. Evaluate this action in a synchronous closure, \
-          or use 'SwiftUI.withAnimation' explicitly.
-          """
-        )
-        await perform(action)
-    #endif
-    }
+    let action = self.action2!.embed(text)
+    await perform(action)
   }
 
   /// Transforms a button state's action into a new action.
@@ -263,8 +236,7 @@ extension TextFieldState: Sendable where Action: Sendable {}
           get: { text },
           set: { newText in
             text = newText
-            action(textField.action2!.embed(newText))
-//            textField.withAction(action)
+            textField.withAction(action, text: newText)
           }
         )
       ) {
@@ -284,8 +256,7 @@ extension TextFieldState: Sendable where Action: Sendable {}
           set: { newText in
             Task {
               text.withValue { $0 = newText }
-              await action(textField.action2!.embed(newText))
-//              await textField.withAction(action)
+              await textField.withAction(action, text: newText)
             }
           }
         )

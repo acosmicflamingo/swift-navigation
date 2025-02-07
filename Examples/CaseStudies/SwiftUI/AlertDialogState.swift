@@ -42,6 +42,7 @@ private class FeatureModel {
 
   enum AlertAction {
     case getFact
+    case getFact2(String)
   }
 
   func numberFactButtonTapped() async {
@@ -52,6 +53,10 @@ private class FeatureModel {
     switch action {
     case .getFact:
       await getFact()
+
+    case .getFact2:
+      break
+
     case nil:
       break
     }
@@ -67,7 +72,7 @@ private class FeatureModel {
       ButtonState(role: .destructive) {
         TextState("OK")
       }
-      TextFieldState(initialText: "LOL", action: .getFact) {
+      TextFieldState(initialText: "LOL", action: AnyCasePath(AlertAction.getFact2)) {
         TextState("Get another fact")
       }
       ButtonState(role: .cancel) {

@@ -1,3 +1,4 @@
+import CasePaths
 import CustomDump
 import Foundation
 import ConcurrencyExtras
@@ -10,14 +11,33 @@ import IssueReporting
 public struct TextFieldState<Action>: Identifiable {
   public let id: UUID
   public let initialText: String
-  public let action: TextFieldStateAction<Action>
-  public var action2: AnyCasePath<Action, String>?
+  public let root: AnyCasePath<Action, String>
+  public var action: Action
   public let placeholderText: TextState
+
+  public var text: String {
+    get { root.extract(from: action) ?? "" }
+    set { action = root.embed(newValue) }
+  }
 
   init(
     id: UUID,
     initialText: String = "",
-    action: TextFieldStateAction<Action>,
+    root: AnyCasePath<Action, String>,
+    action: Action?,
+    placeholderText: TextState
+  ) {
+    self.id = id
+    self.initialText = initialText
+    self.root = root
+    self.action = root.embed(initialText)
+    self.placeholderText = placeholderText
+  }
+
+  init(
+    id: UUID,
+    initialText: String = "",
+    action: Action,
     placeholderText: TextState
   ) {
     self.id = id
@@ -26,33 +46,12 @@ public struct TextFieldState<Action>: Identifiable {
     self.placeholderText = placeholderText
   }
 
-  /// Creates button state.
-  ///
-  /// - Parameters:
-  ///   - role: An optional semantic role that describes the button. A value of `nil` means that the
-  ///     button doesn't have an assigned role.
-  ///   - action: The action to send when the user interacts with the button.
-  ///   - label: A view that describes the purpose of the button's `action`.
-  public init(
-    initialText: String = "",
-    action: Action,
-    placeholderText: () -> TextState
-  ) {
-    self.init(
-      id: UUID(),
-      initialText: initialText,
-      action: .send(action),
-      placeholderText: placeholderText()
-    )
-  }
-
   /// Handle the button's action in a closure.
   ///
   /// - Parameter perform: Unwraps and passes a button's action to a closure to be performed. If the
   ///   action has an associated animation, the context will be wrapped using SwiftUI's
   ///   `withAnimation`.
-  public func withAction(_ perform: (Action?) -> Void, text: String) {
-    let action = self.action2!.embed(text)
+  public func withAction(_ perform: (Action?) -> Void) {
     perform(action)
   }
 
@@ -63,11 +62,7 @@ public struct TextFieldState<Action>: Identifiable {
   ///
   /// - Parameter perform: Unwraps and passes a button's action to a closure to be performed.
   @MainActor
-  public func withAction(
-    _ perform: @MainActor (Action?) async -> Void,
-    text: String
-  ) async {
-    let action = self.action2!.embed(text)
+  public func withAction(_ perform: @MainActor (Action?) async -> Void) async {
     await perform(action)
   }
 
@@ -76,10 +71,10 @@ public struct TextFieldState<Action>: Identifiable {
   /// - Parameter transform: A closure that transforms an optional action into a new optional
   ///   action.
   /// - Returns: Button state over a new action.
-  public func map<NewAction>(_ transform: (Action?) -> NewAction?) -> TextFieldState<NewAction> {
-    TextFieldState<NewAction>(
+  public func map<NewAction>(_ transform: (Action) -> NewAction) -> TextFieldState<NewAction> {
+    return TextFieldState<NewAction>(
       id: self.id,
-      action: self.action.map(transform),
+      action: transform(self.action),
       placeholderText: self.placeholderText
     )
   }
@@ -230,13 +225,13 @@ extension TextFieldState: Sendable where Action: Sendable {}
       _ textField: TextFieldState<Action>,
       action: @escaping (Action?) -> Void
     ) {
-      var text = textField.initialText
+      var textField = textField
       self.init(
         text: Binding(
-          get: { text },
+          get: { textField.text },
           set: { newText in
-            text = newText
-            textField.withAction(action, text: newText)
+            textField.text = newText
+            textField.withAction(action)
           }
         )
       ) {

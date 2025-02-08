@@ -11,7 +11,7 @@ import IssueReporting
 public struct TextFieldState<Action>: Identifiable {
   public let id: UUID
   public let initialText: String
-  public var action: TextFieldStateAction<Action>
+  public let action: TextFieldStateAction<Action>
   public let placeholderText: TextState
 
   init(
@@ -89,7 +89,7 @@ public struct TextFieldState<Action>: Identifiable {
   /// - Parameter perform: Unwraps and passes a button's action to a closure to be performed. If the
   ///   action has an associated animation, the context will be wrapped using SwiftUI's
   ///   `withAnimation`.
-  public mutating func withAction(_ perform: (Action?) -> Void, text2: String) {
+  public func withAction(_ perform: (Action?) -> Void, text2: String) {
     switch self.action.type {
     case let .send(action):
       perform(action)
@@ -104,7 +104,6 @@ public struct TextFieldState<Action>: Identifiable {
         }
     #endif
     }
-    self.action.text = text2
   }
 
   /// Handle the button's action in an async closure.
@@ -114,7 +113,7 @@ public struct TextFieldState<Action>: Identifiable {
   ///
   /// - Parameter perform: Unwraps and passes a button's action to a closure to be performed.
   @MainActor
-  public mutating func withAction(
+  public func withAction(
     _ perform: @MainActor (Action?) async -> Void,
     text2: String
   ) async {
@@ -159,8 +158,28 @@ public struct TextFieldState<Action>: Identifiable {
   }
 }
 
+extension AnyCasePath {
+  public func map<Action, NewAction>(
+    embed: @Sendable (String) -> Action,
+    extract: @Sendable (Action) -> String?,
+    transform: @Sendable (Action) -> NewAction,
+    pullback: @Sendable (NewAction) -> Action
+  ) -> AnyCasePath<NewAction, String> {
+    .init(
+      embed: { text in
+        transform(embed(text))
+      },
+      extract: { action in
+        extract(pullback(action))
+      }
+    )
+  }
+}
+
 /// A type that wraps an action with additional context, _e.g._ for animation.
 public struct TextFieldStateAction<Action> {
+  public let embed: @Sendable (String) -> Action
+  public let extract: @Sendable (Action) -> String?
   public let type: _ActionType
   public var text: String
 
@@ -168,11 +187,19 @@ public struct TextFieldStateAction<Action> {
     _ action: AnyCasePath<Action, String>,
     text: String
   ) -> Self {
-    .init(type: .send(action.embed(text)), text: text)
+    .init(
+      embed: action.embed,
+      extract: action.extract,
+      type: .send(action.embed(text)),
+      text: text
+    )
   }
 
   public static func send(_ action: Action?) -> Self {
-    .init(type: .send(action), text: "")
+    .init(
+      type: .send(action),
+      text: ""
+    )
   }
 
   #if canImport(SwiftUI)

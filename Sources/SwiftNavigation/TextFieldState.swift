@@ -8,10 +8,14 @@ import IssueReporting
   import SwiftUI
 #endif
 
+public protocol TextFieldAction {
+  static func defaultValue(_ string: String) -> Self
+}
+
 public struct TextFieldState<Action>: Identifiable {
   public let id: UUID
   public var text: String
-  public let action: Action?
+  public var action: Action?
   public let placeholderText: TextState
 
   init(
@@ -51,8 +55,9 @@ public struct TextFieldState<Action>: Identifiable {
   /// - Parameter perform: Unwraps and passes a button's action to a closure to be performed. If the
   ///   action has an associated animation, the context will be wrapped using SwiftUI's
   ///   `withAnimation`.
-  public func withAction(_ perform: (Action?) -> Void) {
-    perform(action)
+  public func withAction(_ perform: (Action?) -> Void)
+  where Action: TextFieldAction {
+    perform(AnyCasePath(Action.defaultValue).embed(text))
   }
 
   /// Handle the button's action in an async closure.
@@ -62,8 +67,9 @@ public struct TextFieldState<Action>: Identifiable {
   ///
   /// - Parameter perform: Unwraps and passes a button's action to a closure to be performed.
   @MainActor
-  public func withAction(_ perform: @MainActor (Action?) async -> Void) async {
-    await perform(action)
+  public func withAction(_ perform: @MainActor (Action?) async -> Void) async
+  where Action: TextFieldAction {
+    await perform(AnyCasePath(Action.defaultValue).embed(text))
   }
 
   /// Transforms a button state's action into a new action.
@@ -215,14 +221,14 @@ extension TextFieldState: Sendable where Action: Sendable {}
     public init<Action: Sendable>(
       _ textField: TextFieldState<Action>,
       action: @escaping (Action?) -> Void
-    ) {
+    ) where Action: TextFieldAction {
       var textField = textField
       self.init(
         text: Binding(
           get: { textField.text },
           set: { newText in
             textField.text = newText
-            action(textField.action)
+            textField.withAction(action)
           }
         )
       ) {
@@ -231,21 +237,18 @@ extension TextFieldState: Sendable where Action: Sendable {}
     }
 
     @available(iOS 16, macOS 13, tvOS 16, watchOS 8, *)
+    @MainActor
     public init<Action: Sendable>(
       _ textField: TextFieldState<Action>,
       action: @escaping @Sendable (Action?) async -> Void
-    ) {
-      let textField = LockIsolated(textField)
+    ) where Action: TextFieldAction {
+      var textField = textField
       self.init(
         text: Binding(
-          get: { textField.value.text },
+          get: { textField.text },
           set: { newText in
-            Task {
-              textField.withValue {
-                $0.text = newText
-              }
-              await action(textField.action)
-            }
+            textField.text = newText
+//            textField.withAction(action)
           }
         )
       ) {

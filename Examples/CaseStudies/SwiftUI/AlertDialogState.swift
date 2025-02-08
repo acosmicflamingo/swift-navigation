@@ -1,4 +1,3 @@
-import CasePaths
 import SwiftUI
 import SwiftUINavigation
 
@@ -43,7 +42,6 @@ private class FeatureModel {
 
   enum AlertAction {
     case getFact
-    case printText(String)
   }
 
   func numberFactButtonTapped() async {
@@ -54,10 +52,6 @@ private class FeatureModel {
     switch action {
     case .getFact:
       await getFact()
-
-    case let .printText(text):
-      print("Text:", text)
-
     case nil:
       break
     }
@@ -73,7 +67,7 @@ private class FeatureModel {
       ButtonState(role: .destructive) {
         TextState("OK")
       }
-      TextFieldState(initialText: "LOL", action: AnyCasePath(AlertAction.printText)) {
+      TextFieldState(initialText: "LOL", action: .getFact) {
         TextState("Get another fact")
       }
       ButtonState(role: .cancel) {

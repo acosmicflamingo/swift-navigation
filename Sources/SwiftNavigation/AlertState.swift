@@ -217,15 +217,6 @@ public struct AlertState<Action>: Identifiable {
       title: title()
     )
   }
-
-  public func map<NewAction>(_ transform: (Action?) -> NewAction?) -> AlertState<NewAction> {
-    AlertState<NewAction>(
-      id: self.id,
-      actions: self.buttons.map { AnyActionState.button($0.map(transform)) },
-      message: self.message,
-      title: self.title
-    )
-  }
 }
 
 extension AlertState: CustomDumpReflectable {

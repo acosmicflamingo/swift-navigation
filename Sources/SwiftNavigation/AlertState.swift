@@ -221,10 +221,7 @@ public struct AlertState<Action>: Identifiable {
   public func map<NewAction>(_ transform: (Action?) -> NewAction?) -> AlertState<NewAction> {
     AlertState<NewAction>(
       id: self.id,
-      actions: self.buttons.map {
-        let actionState = AnyActionState.button($0)
-        return actionState.map(transform)
-      },
+      actions: self.buttons.map { AnyActionState.button($0.map(transform)) },
       message: self.message,
       title: self.title
     )
